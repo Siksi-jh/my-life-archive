@@ -165,3 +165,5 @@ h2{font-size:32px;margin:0 0 16px;font-weight:500}
  .row{grid-template-columns:1fr}.preview-grid{grid-template-columns:repeat(2,1fr)}
  .article{padding:22px}.article h1{font-size:34px}.gallery{grid-template-columns:1fr}
 }
+
+.admin-editor-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.admin-post-list{display:flex;flex-direction:column;border-top:1px solid var(--line);margin-top:16px}.admin-post-row{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}.admin-post-row .meta{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}.admin-row-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.btn.mini{padding:7px 11px;font-size:12px}@media(max-width:640px){.admin-editor-head,.admin-post-row{align-items:flex-start;flex-direction:column}.admin-row-actions{justify-content:flex-start}}

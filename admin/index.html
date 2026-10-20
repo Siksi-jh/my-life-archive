@@ -1,11 +1,14 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ADMIN · THE YEARS</title><link rel="stylesheet" href="../css/style.css"><script defer src="../js/config.js"></script><script defer src="admin.js"></script></head>
-<body><div class="admin-shell"><div class="admin-top"><div><div class="kicker">Private editor</div><div class="admin-title">THE YEARS — ADMIN</div></div><a href="../index.html">사이트 보기 →</a></div>
+<title>ADMIN · THE YEARS</title><link rel="stylesheet" href="../css/style.css"><script defer src="../js/config.js"></script><script defer src="admin.js"></script>
+<link rel="manifest" href="../manifest.webmanifest"><meta name="theme-color" content="#142019"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="THE YEARS"><link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+</head><body><div class="admin-shell"><div class="admin-top"><div><div class="kicker">Private editor</div><div class="admin-title">THE YEARS — ADMIN</div></div><a href="../index.html">사이트 보기 →</a></div>
 <section id="login" class="auth-card"><div class="field"><label>관리자 비밀번호</label><input id="password" type="password" placeholder="비밀번호"></div><button id="loginBtn" class="btn btn-primary">로그인</button><div id="loginStatus" class="status"></div></section>
-<section id="editor" class="editor hidden">
-<div class="row"><div class="field"><label>날짜</label><input id="postDate" type="date"></div><div class="field"><label>카테고리</label><select id="category"><option>DIARY</option><option>TRAVEL</option><option>PHOTO</option><option>CAR</option><option>STUDY</option><option>ARCHIVE</option></select></div></div>
-<div class="field"><label>제목</label><input id="title" placeholder="오늘의 제목"></div>
-<div class="field"><label>본문</label><textarea id="body" placeholder="오늘 있었던 일을 적어보세요."></textarea></div>
-<div class="field"><label>사진</label><div id="dropzone" class="dropzone">클릭하거나 사진을 끌어다 놓으세요<br><span class="muted">여러 장 선택 가능</span><input id="photos" type="file" accept="image/*" multiple hidden></div><div id="preview" class="preview-grid"></div></div>
-<div class="toolbar"><button id="logoutBtn" class="btn btn-soft">로그아웃</button><button id="publishBtn" class="btn btn-primary">게시하기</button></div><div id="status" class="status"></div>
-</section></div></body></html>
+<div id="adminArea" class="hidden">
+<section class="editor"><div class="admin-editor-head"><div><div class="kicker" id="modeKicker">New post</div><h2 id="editorHeading" style="margin:0">새 글 작성</h2></div><button id="newBtn" class="btn btn-soft hidden">새 글로 전환</button></div>
+<input id="editingId" type="hidden"><div class="row"><div class="field"><label>날짜</label><input id="postDate" type="date"></div><div class="field"><label>카테고리</label><select id="category"><option>DIARY</option><option>TRAVEL</option><option>PHOTO</option><option>CAR</option><option>STUDY</option><option>ARCHIVE</option></select></div></div>
+<div class="field"><label>제목</label><input id="title" placeholder="오늘의 제목"></div><div class="field"><label>본문</label><textarea id="body" placeholder="오늘 있었던 일을 적어보세요."></textarea></div>
+<div id="existingWrap" class="field hidden"><label>기존 사진</label><div id="existingPreview" class="preview-grid"></div><div class="muted" style="font-size:12px;margin-top:6px">삭제할 사진은 × 버튼을 누르세요.</div></div>
+<div class="field"><label>새 사진 추가</label><div id="dropzone" class="dropzone">클릭하거나 사진을 끌어다 놓으세요<br><span class="muted">여러 장 선택 가능</span><input id="photos" type="file" accept="image/*" multiple hidden></div><div id="preview" class="preview-grid"></div></div>
+<div class="toolbar"><button id="logoutBtn" class="btn btn-soft">로그아웃</button><button id="deleteBtn" class="btn btn-danger hidden">글 삭제</button><button id="publishBtn" class="btn btn-primary">게시하기</button></div><div id="status" class="status"></div></section>
+<section class="editor" style="margin-top:18px"><div class="admin-editor-head"><div><div class="kicker">Manage</div><h2 style="margin:0">작성한 글</h2></div><button id="refreshBtn" class="btn btn-soft">새로고침</button></div><div id="postList" class="admin-post-list"></div></section>
+</div></div></body></html>

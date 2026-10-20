@@ -7,5 +7,5 @@ window.SITE_CONFIG = {
 
   // Worker API를 배포한 뒤 주소를 여기에 넣으세요.
   // 예: "https://the-years-api.xxxxx.workers.dev"
- apiBase: "https://the-years-api.jh44022.workers.dev"
+  apiBase: ""
 };

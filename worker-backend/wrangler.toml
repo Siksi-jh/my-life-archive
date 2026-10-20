@@ -8,9 +8,8 @@ FRONTEND_ORIGIN = "https://my-life-archive-8mc.pages.dev"
 [[d1_databases]]
 binding = "DB"
 database_name = "the-years-db"
-database_id = "42897cf8-9174-4310-a098-e85a068da7da"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
 
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "the-years-media"
-# trigger redeploy

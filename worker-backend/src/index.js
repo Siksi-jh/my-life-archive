@@ -1,97 +1,24 @@
-
 const enc=new TextEncoder();
-
-function cors(req,env){
-  const origin=req.headers.get("Origin")||"";
-  const allow=origin===env.FRONTEND_ORIGIN?origin:env.FRONTEND_ORIGIN;
-  return {
-    "Access-Control-Allow-Origin":allow,
-    "Access-Control-Allow-Headers":"Content-Type, Authorization",
-    "Access-Control-Allow-Methods":"GET,POST,OPTIONS",
-    "Access-Control-Max-Age":"86400",
-    "Vary":"Origin"
-  }
-}
+function cors(req,env){const o=req.headers.get("Origin")||"",a=o===env.FRONTEND_ORIGIN?o:env.FRONTEND_ORIGIN;return{"Access-Control-Allow-Origin":a,"Access-Control-Allow-Headers":"Content-Type, Authorization","Access-Control-Allow-Methods":"GET,POST,PUT,DELETE,OPTIONS","Access-Control-Max-Age":"86400","Vary":"Origin"}}
 function json(data,status=200,headers={}){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8",...headers}})}
 function b64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
 function fromB64url(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
 async function hmac(data,secret){const key=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign","verify"]);return new Uint8Array(await crypto.subtle.sign("HMAC",key,enc.encode(data)))}
-async function makeToken(secret){
-  const payload=b64url(enc.encode(JSON.stringify({exp:Date.now()+1000*60*60*12})));
-  const sig=b64url(await hmac(payload,secret)); return payload+"."+sig
-}
-async function validToken(token,secret){
-  try{const [p,s]=token.split(".");if(!p||!s)return false;const expected=await hmac(p,secret), got=fromB64url(s);if(expected.length!==got.length)return false;let diff=0;for(let i=0;i<expected.length;i++)diff|=expected[i]^got[i];if(diff!==0)return false;const obj=JSON.parse(new TextDecoder().decode(fromB64url(p)));return obj.exp>Date.now()}catch{return false}
-}
-async function requireAuth(req,env){
-  const h=req.headers.get("Authorization")||""; if(!h.startsWith("Bearer "))return false;
-  return validToken(h.slice(7),env.SESSION_SECRET)
-}
-function extFromType(t){return({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/heic":"heic","image/heif":"heif"}[t]||"bin")}
-
-export default {
-async fetch(request,env){
-  const u=new URL(request.url), C=cors(request,env);
-  if(request.method==="OPTIONS") return new Response(null,{headers:C});
-
-  if(u.pathname==="/api/login" && request.method==="POST"){
-    const b=await request.json().catch(()=>({}));
-    if(!b.password || b.password!==env.ADMIN_PASSWORD) return json({error:"비밀번호가 올바르지 않습니다."},401,C);
-    return json({token:await makeToken(env.SESSION_SECRET)},200,C);
-  }
-
-  if(u.pathname==="/api/posts" && request.method==="GET"){
-    const limit=Math.min(Number(u.searchParams.get("limit")||30),200);
-    const category=u.searchParams.get("category"), year=u.searchParams.get("year");
-    let q=`SELECT p.*, (SELECT object_key FROM images i WHERE i.post_id=p.id ORDER BY sort_order,id LIMIT 1) cover_key FROM posts p`;
-    const w=[], vals=[];
-    if(category){w.push("category=?");vals.push(category)}
-    if(year){w.push("substr(post_date,1,4)=?");vals.push(year)}
-    if(w.length)q+=" WHERE "+w.join(" AND ");
-    q+=" ORDER BY post_date DESC, id DESC LIMIT ?";
-    vals.push(limit);
-    const {results}=await env.DB.prepare(q).bind(...vals).all();
-    const base=u.origin;
-    const posts=results.map(p=>({...p,cover_url:p.cover_key?`${base}/media/${encodeURIComponent(p.cover_key)}`:null}));
-    return json({posts},200,C);
-  }
-
-  const postMatch=u.pathname.match(/^\/api\/posts\/(\d+)$/);
-  if(postMatch && request.method==="GET"){
-    const id=Number(postMatch[1]);
-    const p=await env.DB.prepare("SELECT * FROM posts WHERE id=?").bind(id).first();
-    if(!p)return json({error:"not found"},404,C);
-    const {results}=await env.DB.prepare("SELECT id,object_key,sort_order FROM images WHERE post_id=? ORDER BY sort_order,id").bind(id).all();
-    p.images=results.map(x=>({id:x.id,url:`${u.origin}/media/${encodeURIComponent(x.object_key)}`}));
-    return json(p,200,C);
-  }
-
-  if(u.pathname==="/api/posts" && request.method==="POST"){
-    if(!(await requireAuth(request,env)))return json({error:"로그인이 필요합니다."},401,C);
-    const form=await request.formData();
-    const title=String(form.get("title")||"").trim(), body=String(form.get("body")||""), category=String(form.get("category")||"DIARY"), post_date=String(form.get("post_date")||"");
-    if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(post_date))return json({error:"제목과 날짜를 확인하세요."},400,C);
-    const res=await env.DB.prepare("INSERT INTO posts(title,body,category,post_date) VALUES(?,?,?,?)").bind(title,body,category,post_date).run();
-    const postId=res.meta.last_row_id;
-    const photos=form.getAll("photos").filter(x=>x && typeof x==="object" && x.size>0).slice(0,20);
-    let n=0;
-    for(const f of photos){
-      if(f.size>15*1024*1024)continue;
-      const key=`posts/${postId}/${Date.now()}-${crypto.randomUUID()}.${extFromType(f.type)}`;
-      await env.MEDIA.put(key,await f.arrayBuffer(),{httpMetadata:{contentType:f.type||"application/octet-stream"}});
-      await env.DB.prepare("INSERT INTO images(post_id,object_key,sort_order) VALUES(?,?,?)").bind(postId,key,n++).run();
-    }
-    return json({ok:true,id:postId},201,C);
-  }
-
-  const mediaMatch=u.pathname.match(/^\/media\/(.+)$/);
-  if(mediaMatch && request.method==="GET"){
-    const key=decodeURIComponent(mediaMatch[1]), obj=await env.MEDIA.get(key);
-    if(!obj)return new Response("Not found",{status:404,headers:C});
-    const h=new Headers(C);obj.writeHttpMetadata(h);h.set("etag",obj.httpEtag);h.set("cache-control","public,max-age=31536000,immutable");
-    return new Response(obj.body,{headers:h});
-  }
-
-  return json({error:"not found"},404,C);
-}
-}
+async function makeToken(secret){const p=b64url(enc.encode(JSON.stringify({exp:Date.now()+43200000}))),s=b64url(await hmac(p,secret));return p+"."+s}
+async function validToken(token,secret){try{const[p,s]=token.split(".");if(!p||!s)return false;const e=await hmac(p,secret),g=fromB64url(s);if(e.length!==g.length)return false;let d=0;for(let i=0;i<e.length;i++)d|=e[i]^g[i];if(d!==0)return false;return JSON.parse(new TextDecoder().decode(fromB64url(p))).exp>Date.now()}catch{return false}}
+async function auth(req,env){const h=req.headers.get("Authorization")||"";return h.startsWith("Bearer ")&&await validToken(h.slice(7),env.SESSION_SECRET)}
+function ext(t){return({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/heic":"heic","image/heif":"heif"}[t]||"bin")}
+async function postWithImages(id,env,origin){const p=await env.DB.prepare("SELECT * FROM posts WHERE id=?").bind(id).first();if(!p)return null;const{results}=await env.DB.prepare("SELECT id,object_key,sort_order FROM images WHERE post_id=? ORDER BY sort_order,id").bind(id).all();p.images=results.map(x=>({id:x.id,url:`${origin}/media/${encodeURIComponent(x.object_key)}`}));return p}
+async function addUploads(form,id,env,start=0){const arr=form.getAll("photos").filter(x=>x&&typeof x==="object"&&x.size>0).slice(0,20);let n=start;for(const f of arr){if(f.size>15728640)continue;const k=`posts/${id}/${Date.now()}-${crypto.randomUUID()}.${ext(f.type)}`;await env.MEDIA.put(k,await f.arrayBuffer(),{httpMetadata:{contentType:f.type||"application/octet-stream"}});await env.DB.prepare("INSERT INTO images(post_id,object_key,sort_order) VALUES(?,?,?)").bind(id,k,n++).run()}}
+async function removeImages(ids,postId,env){for(const raw of ids){const id=Number(raw);if(!id)continue;const row=await env.DB.prepare("SELECT object_key FROM images WHERE id=? AND post_id=?").bind(id,postId).first();if(row){await env.MEDIA.delete(row.object_key);await env.DB.prepare("DELETE FROM images WHERE id=? AND post_id=?").bind(id,postId).run()}}}
+async function deletePost(id,env){const{results}=await env.DB.prepare("SELECT object_key FROM images WHERE post_id=?").bind(id).all();for(const x of results)await env.MEDIA.delete(x.object_key);await env.DB.prepare("DELETE FROM images WHERE post_id=?").bind(id).run();await env.DB.prepare("DELETE FROM posts WHERE id=?").bind(id).run()}
+export default{async fetch(req,env){const u=new URL(req.url),C=cors(req,env);if(req.method==="OPTIONS")return new Response(null,{headers:C});
+if(u.pathname==="/api/login"&&req.method==="POST"){const b=await req.json().catch(()=>({}));if(!b.password||b.password!==env.ADMIN_PASSWORD)return json({error:"비밀번호가 올바르지 않습니다."},401,C);return json({token:await makeToken(env.SESSION_SECRET)},200,C)}
+if(u.pathname==="/api/posts"&&req.method==="GET"){const limit=Math.min(Number(u.searchParams.get("limit")||30),200),category=u.searchParams.get("category"),year=u.searchParams.get("year");let q=`SELECT p.*, (SELECT object_key FROM images i WHERE i.post_id=p.id ORDER BY sort_order,id LIMIT 1) cover_key FROM posts p`;const w=[],v=[];if(category){w.push("category=?");v.push(category)}if(year){w.push("substr(post_date,1,4)=?");v.push(year)}if(w.length)q+=" WHERE "+w.join(" AND ");q+=" ORDER BY post_date DESC,id DESC LIMIT ?";v.push(limit);const{results}=await env.DB.prepare(q).bind(...v).all();return json({posts:results.map(p=>({...p,cover_url:p.cover_key?`${u.origin}/media/${encodeURIComponent(p.cover_key)}`:null}))},200,C)}
+const m=u.pathname.match(/^\/api\/posts\/(\d+)$/);
+if(m&&req.method==="GET"){const p=await postWithImages(Number(m[1]),env,u.origin);return p?json(p,200,C):json({error:"not found"},404,C)}
+if(u.pathname==="/api/posts"&&req.method==="POST"){if(!(await auth(req,env)))return json({error:"로그인이 필요합니다."},401,C);const f=await req.formData(),title=String(f.get("title")||"").trim(),body=String(f.get("body")||""),category=String(f.get("category")||"DIARY"),post_date=String(f.get("post_date")||"");if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(post_date))return json({error:"제목과 날짜를 확인하세요."},400,C);const r=await env.DB.prepare("INSERT INTO posts(title,body,category,post_date) VALUES(?,?,?,?)").bind(title,body,category,post_date).run(),id=r.meta.last_row_id;await addUploads(f,id,env,0);return json({ok:true,id},201,C)}
+if(m&&req.method==="PUT"){if(!(await auth(req,env)))return json({error:"로그인이 필요합니다."},401,C);const id=Number(m[1]);if(!(await env.DB.prepare("SELECT id FROM posts WHERE id=?").bind(id).first()))return json({error:"not found"},404,C);const f=await req.formData(),title=String(f.get("title")||"").trim(),body=String(f.get("body")||""),category=String(f.get("category")||"DIARY"),post_date=String(f.get("post_date")||"");if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(post_date))return json({error:"제목과 날짜를 확인하세요."},400,C);await env.DB.prepare("UPDATE posts SET title=?,body=?,category=?,post_date=? WHERE id=?").bind(title,body,category,post_date,id).run();await removeImages(f.getAll("remove_image_ids"),id,env);const c=await env.DB.prepare("SELECT COALESCE(MAX(sort_order),-1) m FROM images WHERE post_id=?").bind(id).first();await addUploads(f,id,env,Number(c?.m??-1)+1);return json({ok:true,id},200,C)}
+if(m&&req.method==="DELETE"){if(!(await auth(req,env)))return json({error:"로그인이 필요합니다."},401,C);await deletePost(Number(m[1]),env);return json({ok:true},200,C)}
+const mm=u.pathname.match(/^\/media\/(.+)$/);if(mm&&req.method==="GET"){const k=decodeURIComponent(mm[1]),obj=await env.MEDIA.get(k);if(!obj)return new Response("Not found",{status:404,headers:C});const h=new Headers(C);obj.writeHttpMetadata(h);h.set("etag",obj.httpEtag);h.set("cache-control","public,max-age=31536000,immutable");return new Response(obj.body,{headers:h})}
+return json({error:"not found"},404,C)}}
