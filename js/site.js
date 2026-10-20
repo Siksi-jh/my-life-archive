@@ -2,19 +2,8 @@
 function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function api(path){const b=(window.SITE_CONFIG.apiBase||"").replace(/\/$/,""); return b ? b+path : ""}
 
-function ageOnDate(date, birthDateString){
-  const [by,bm,bd]=birthDateString.split("-").map(Number);
-  const y=date.getFullYear(), m=date.getMonth()+1, d=date.getDate();
-  let age=y-by;
-  if(m<bm || (m===bm && d<bd)) age--;
-  return age;
-}
-
-function ageRangeForYear(year, birthDateString){
-  const birthYear=Number(birthDateString.slice(0,4));
-  const beforeBirthday=year-birthYear-1;
-  const afterBirthday=year-birthYear;
-  return {beforeBirthday, afterBirthday};
+function ageRangeForYear(year, birthYear){
+  return {beforeBirthday:year-birthYear-1, afterBirthday:year-birthYear};
 }
 
 function renderTimeline(){
@@ -22,23 +11,23 @@ function renderTimeline(){
   const cfg=SITE_CONFIG;
   const now=new Date();
   const currentYear=Math.max(cfg.startYear,Math.min(now.getFullYear(),cfg.endYear));
-  const currentAge=ageOnDate(now,cfg.birthDate);
+  const currentRange=ageRangeForYear(currentYear,cfg.birthYear);
 
   const groups={};
   for(let y=cfg.startYear;y<=cfg.endYear;y++){
-    const ages=ageRangeForYear(y,cfg.birthDate);
+    const ages=ageRangeForYear(y,cfg.birthYear);
     const decade=Math.floor(ages.afterBirthday/10)*10;
     (groups[decade]??=[]).push({y,...ages});
   }
 
   const decadeKeys=Object.keys(groups).map(Number).sort((a,b)=>a-b);
-  const activeDecade=Math.floor(ageRangeForYear(currentYear,cfg.birthDate).afterBirthday/10)*10;
+  const activeDecade=Math.floor(currentRange.afterBirthday/10)*10;
 
   wrap.innerHTML=`
     <div class="current-year">
       <div>
-        <strong>${currentYear}</strong> <span class="age">· 현재 만 ${currentAge}세</span>
-        <div class="desc">12월 10일 생일 기준으로 자동 계산됩니다.</div>
+        <strong>${currentYear}</strong> <span class="age">· 만 ${currentRange.beforeBirthday}–${currentRange.afterBirthday}세</span>
+        <div class="desc">만 나이 기준으로 표시됩니다.</div>
       </div>
       <a class="cta" href="diary.html?year=${currentYear}">기록 보기</a>
     </div>
