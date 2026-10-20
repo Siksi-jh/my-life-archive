@@ -1,2 +1,63 @@
 schedule:
   - cron: "15 0 1 * *"
+name: Monthly THE YEARS Backup
+
+on:
+  schedule:
+    - cron: "15 0 1 * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Install rclone
+        run: curl https://rclone.org/install.sh | sudo bash
+
+      - name: Restore Google Drive connection
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONFIG_B64 }}" | base64 -d > ~/.config/rclone/rclone.conf
+
+      - name: Export D1 database
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          mkdir -p backup/database
+          mkdir -p backup/photos
+          wrangler d1 export the-years-db \
+            --remote \
+            --output=backup/database/the-years-db.sql \
+            --config worker-backend/wrangler.toml
+
+      - name: Connect to R2
+        run: |
+          rclone config create r2 s3 \
+            provider Cloudflare \
+            access_key_id "${{ secrets.R2_ACCESS_KEY_ID }}" \
+            secret_access_key "${{ secrets.R2_SECRET_ACCESS_KEY }}" \
+            endpoint "https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+
+      - name: Backup photos from R2
+        run: |
+          rclone copy r2:the-years-media backup/photos --progress
+
+      - name: Upload backup to Google Drive
+        run: |
+          MONTH=$(date -u +%Y-%m)
+          rclone copy backup "gdrive:THE YEARS BACKUP/$MONTH" --progress
+
+      - name: Keep temporary GitHub backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-years-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 30
