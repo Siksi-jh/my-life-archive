@@ -62,3 +62,9 @@ HOME / DIARY / TRAVEL / CAR / STUDY / PRIVATE / ADMIN
 - Admin date field now always uses Asia/Seoul (KST), not UTC.
 - New post/reset date no longer shifts around midnight because of `toISOString()`.
 - Monthly Google Drive backup folder naming also uses Asia/Seoul time.
+
+
+## v6.3 navigation hotfix
+- Fixed old navigation bar remaining on post detail pages.
+- Normalized all public pages to the same current menu:
+  HOME / DIARY / TRAVEL / CAR / STUDY / PRIVATE / ADMIN
