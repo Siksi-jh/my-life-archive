@@ -27,3 +27,21 @@
 - Google Drive: 월 1회 ZIP
 - 외장 SSD/HDD: 3~6개월
 - 연말: 연도별 최종본
+
+## 제목/문구 직접 바꾸는 방법
+`js/config.js` 파일만 수정하면 됩니다.
+
+```js
+window.SITE_CONFIG = {
+  title: "PARK ARCHIVE",
+  subtitle: "기록은 쌓이고, 시간은 남는다.",
+  startText: "2026 — ongoing"
+};
+```
+
+- title: 홈페이지 큰 제목
+- subtitle: 제목 아래 설명
+- startText: 시작 연도 문구
+
+GitHub에서 `js/config.js`를 열고 연필(Edit) 버튼으로 수정한 뒤 Commit changes 하면,
+Cloudflare Pages가 자동 재배포합니다.
