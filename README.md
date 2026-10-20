@@ -68,3 +68,10 @@ HOME / DIARY / TRAVEL / CAR / STUDY / PRIVATE / ADMIN
 - Fixed old navigation bar remaining on post detail pages.
 - Normalized all public pages to the same current menu:
   HOME / DIARY / TRAVEL / CAR / STUDY / PRIVATE / ADMIN
+
+
+## v6.4 international age
+- Birth date for age calculation: 1990-12-10
+- Current-year header shows exact current international age and changes automatically on December 10.
+- Year cards show the accurate yearly range, e.g. 2026 = 만 35–36세.
+- Age tabs now use international-age decades.

@@ -2,40 +2,62 @@
 function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function api(path){const b=(window.SITE_CONFIG.apiBase||"").replace(/\/$/,""); return b ? b+path : ""}
 
+function ageOnDate(date, birthDateString){
+  const [by,bm,bd]=birthDateString.split("-").map(Number);
+  const y=date.getFullYear(), m=date.getMonth()+1, d=date.getDate();
+  let age=y-by;
+  if(m<bm || (m===bm && d<bd)) age--;
+  return age;
+}
+
+function ageRangeForYear(year, birthDateString){
+  const birthYear=Number(birthDateString.slice(0,4));
+  const beforeBirthday=year-birthYear-1;
+  const afterBirthday=year-birthYear;
+  return {beforeBirthday, afterBirthday};
+}
+
 function renderTimeline(){
   const wrap=document.querySelector("#timeline"); if(!wrap) return;
-  const cfg=SITE_CONFIG, now=new Date().getFullYear();
-  const current=Math.max(cfg.startYear,Math.min(now,cfg.endYear));
-  const currentAge=cfg.startAge+(current-cfg.startYear);
+  const cfg=SITE_CONFIG;
+  const now=new Date();
+  const currentYear=Math.max(cfg.startYear,Math.min(now.getFullYear(),cfg.endYear));
+  const currentAge=ageOnDate(now,cfg.birthDate);
+
   const groups={};
   for(let y=cfg.startYear;y<=cfg.endYear;y++){
-    const age=cfg.startAge+(y-cfg.startYear);
-    const decade=Math.floor(age/10)*10;
-    (groups[decade]??=[]).push({y,age});
+    const ages=ageRangeForYear(y,cfg.birthDate);
+    const decade=Math.floor(ages.afterBirthday/10)*10;
+    (groups[decade]??=[]).push({y,...ages});
   }
+
   const decadeKeys=Object.keys(groups).map(Number).sort((a,b)=>a-b);
-  const activeDecade=Math.floor(currentAge/10)*10;
+  const activeDecade=Math.floor(ageRangeForYear(currentYear,cfg.birthDate).afterBirthday/10)*10;
+
   wrap.innerHTML=`
     <div class="current-year">
       <div>
-        <strong>${current}</strong> <span class="age">· ${currentAge}세</span>
-        <div class="desc">현재 기록 중인 해입니다.</div>
+        <strong>${currentYear}</strong> <span class="age">· 현재 만 ${currentAge}세</span>
+        <div class="desc">12월 10일 생일 기준으로 자동 계산됩니다.</div>
       </div>
-      <a class="cta" href="diary.html?year=${current}">기록 보기</a>
+      <a class="cta" href="diary.html?year=${currentYear}">기록 보기</a>
     </div>
+
     <div class="decade-tabs">
-      ${decadeKeys.map(d=>`<button class="${d===activeDecade?'active':''}" data-d="${d}">${d}대</button>`).join("")}
+      ${decadeKeys.map(d=>`<button class="${d===activeDecade?'active':''}" data-d="${d}">만 ${d}대</button>`).join("")}
     </div>
+
     ${decadeKeys.map(d=>`
       <div class="decade-panel ${d===activeDecade?'active':''}" data-panel="${d}">
         <div class="years">
           ${groups[d].map(o=>`
-            <a class="year ${o.y===current?'current':''} ${o.y>now?'future':''}" href="diary.html?year=${o.y}">
-              <strong>${o.y} · ${o.age}세</strong>
-              <span>${o.y>now?'기록 예정':o.y===current?'기록 중':'기록 보기'}</span>
+            <a class="year ${o.y===currentYear?'current':''} ${o.y>now.getFullYear()?'future':''}" href="diary.html?year=${o.y}">
+              <strong>${o.y}</strong>
+              <span>만 ${o.beforeBirthday}–${o.afterBirthday}세</span>
             </a>`).join("")}
         </div>
       </div>`).join("")}`;
+
   wrap.querySelectorAll(".decade-tabs button").forEach(btn=>btn.onclick=()=>{
     wrap.querySelectorAll(".decade-tabs button").forEach(x=>x.classList.remove("active"));
     wrap.querySelectorAll(".decade-panel").forEach(x=>x.classList.remove("active"));
@@ -43,7 +65,6 @@ function renderTimeline(){
     wrap.querySelector(`[data-panel="${btn.dataset.d}"]`).classList.add("active");
   });
 }
-
 async function loadLatest(){
   const el=document.querySelector("#latest-posts"); if(!el) return;
   if(!SITE_CONFIG.apiBase){
