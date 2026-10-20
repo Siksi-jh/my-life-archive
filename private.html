@@ -1,0 +1,42 @@
+<!doctype html><html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PRIVATE · THE YEARS</title>
+<link rel="stylesheet" href="css/style.css"><script defer src="js/config.js"></script>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#142019">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+</head><body><div class="shell">
+<nav class="nav">
+<a href="index.html">HOME</a><a href="diary.html">DIARY</a><a href="travel.html">TRAVEL</a><a href="car.html">CAR</a><a href="study.html">STUDY</a><a class="active" href="private.html">PRIVATE</a>
+<span class="spacer"></span><a class="admin-link" href="admin/">ADMIN</a>
+</nav>
+<section class="card" style="margin-top:20px">
+  <div class="kicker">Private records</div>
+  <h2>비밀기록</h2>
+  <div id="gate" class="private-gate">
+    <p>비공개 기록입니다. 비밀번호를 입력하면 열람할 수 있습니다.</p>
+    <div class="private-form">
+      <input id="pw" type="password" placeholder="비밀번호">
+      <button id="enter" class="btn btn-primary">ENTER</button>
+    </div>
+    <div id="gateStatus" class="status"></div>
+  </div>
+  <div id="privateList" class="latest-grid hidden"></div>
+</section>
+</div>
+<script>
+function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+const b=()=> (SITE_CONFIG.apiBase||"").replace(/\/$/,"");
+document.addEventListener("DOMContentLoaded",()=>{
+ document.querySelector("#enter").onclick=async()=>{
+  const st=document.querySelector("#gateStatus");
+  try{
+   const r=await fetch(b()+"/api/private/list",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({password:document.querySelector("#pw").value})});
+   const d=await r.json(); if(!r.ok) throw new Error(d.error||"비밀번호가 올바르지 않습니다.");
+   const list=document.querySelector("#privateList");
+   list.innerHTML=(d.posts||[]).map(p=>`<a class="post-card" href="post.html?id=${p.id}&private=1">${p.cover_url?`<img class="post-thumb" src="${esc(p.cover_url)}" alt="">`:`<div class="post-thumb"></div>`}<div class="post-body"><div class="meta">${esc(p.category)} · ${esc(p.post_date)}</div><h3>${esc(p.title)}</h3></div></a>`).join("")||'<div class="empty">비공개 기록이 없습니다.</div>';
+   document.querySelector("#gate").classList.add("hidden"); list.classList.remove("hidden");
+   sessionStorage.setItem("privatePassword", document.querySelector("#pw").value);
+  }catch(e){st.textContent=e.message;st.className="status show err"}
+ }
+});
+</script></body></html>

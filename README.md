@@ -30,3 +30,23 @@ Safari에서 사이트 접속 → 공유 → `홈 화면에 추가` → `추가`
 - R2 bucket: the-years-media
 
 따라서 전체 덮어쓰기 후에도 관리자 연결이 끊기지 않습니다.
+
+
+## v5
+- 글별 공개 / 비공개 선택
+- 비공개 글은 공개 목록에서 숨김
+- 직접 링크 접근 시 비밀번호 입력 후 열람
+- 별도 PRIVATE_VIEW_PASSWORD Secret을 만들면 관리자 비밀번호와 분리 가능
+- Google Drive 월간 자동 백업 workflow 포함
+- 자세한 백업 설정은 BACKUP_GOOGLE_DRIVE.md 참고
+
+
+## v6 menu structure
+Public navigation is intentionally minimal:
+HOME / DIARY / TRAVEL / CAR / STUDY / PRIVATE / ADMIN
+
+- PHOTO and ARCHIVE menus removed.
+- Public categories are only DIARY, TRAVEL, CAR, STUDY.
+- Privacy is a separate visibility setting, not a category.
+- PRIVATE asks for a password and then shows every private post regardless of category.
+- Homepage and category pages never expose private posts.
