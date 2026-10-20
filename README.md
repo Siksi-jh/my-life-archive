@@ -56,3 +56,9 @@ HOME / DIARY / TRAVEL / CAR / STUDY / PRIVATE / ADMIN
 - Fixed admin post publishing error: `Cannot read properties of null (reading 'value')`
 - Restored the Public / Private selector in the admin editor
 - Added a defensive fallback so cached older admin markup will not crash publishing
+
+
+## v6.2 KST hotfix
+- Admin date field now always uses Asia/Seoul (KST), not UTC.
+- New post/reset date no longer shifts around midnight because of `toISOString()`.
+- Monthly Google Drive backup folder naming also uses Asia/Seoul time.

@@ -7,6 +7,16 @@ function status(el,msg,ok=false){el.textContent=msg;el.className="status show "+
 function showArea(on){$("#login").classList.toggle("hidden",on);$("#adminArea").classList.toggle("hidden",!on)}
 function auth(){return {authorization:"Bearer "+token}}
 function fmt(s){return (s||"").slice(0,10)}
+
+function koreaDateString(){
+  const parts=new Intl.DateTimeFormat("en-CA",{
+    timeZone:"Asia/Seoul",
+    year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(new Date());
+  const v=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+  return `${v.year}-${v.month}-${v.day}`;
+}
+
 function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 
 function renderPreview(){
@@ -32,7 +42,7 @@ function renderExisting(images=[]){
 }
 function resetEditor(){
   $("#editingId").value="";$("#title").value="";$("#body").value="";
-  $("#postDate").value=new Date().toISOString().slice(0,10);$("#category").value="DIARY";if($("#visibility")) $("#visibility").value="public";
+  $("#postDate").value=koreaDateString();$("#category").value="DIARY";if($("#visibility")) $("#visibility").value="public";
   files=[];removedImageIds=[];renderPreview();renderExisting([]);
   $("#modeKicker").textContent="New post";$("#editorHeading").textContent="새 글 작성";
   $("#publishBtn").textContent="게시하기";$("#deleteBtn").classList.add("hidden");$("#newBtn").classList.add("hidden");
@@ -102,7 +112,7 @@ async function savePost(){
   }catch(e){status(st,e.message)}
 }
 document.addEventListener("DOMContentLoaded",()=>{
-  $("#postDate").value=new Date().toISOString().slice(0,10);
+  $("#postDate").value=koreaDateString();
   if(token){showArea(true);loadPosts()}
   $("#loginBtn").onclick=async()=>{
     if(!base())return status($("#loginStatus"),"js/config.js의 Worker API 주소를 확인하세요.");
