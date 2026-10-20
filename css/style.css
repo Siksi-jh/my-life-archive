@@ -167,3 +167,82 @@ h2{font-size:32px;margin:0 0 16px;font-weight:500}
 }
 
 .admin-editor-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.admin-post-list{display:flex;flex-direction:column;border-top:1px solid var(--line);margin-top:16px}.admin-post-row{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}.admin-post-row .meta{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}.admin-row-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.btn.mini{padding:7px 11px;font-size:12px}@media(max-width:640px){.admin-editor-head,.admin-post-row{align-items:flex-start;flex-direction:column}.admin-row-actions{justify-content:flex-start}}
+
+/* v4 - minimal Notion/blog style sidebar */
+.minimal-aside{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.profile-card{
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+  padding:22px;
+}
+.profile-mark{
+  flex:0 0 48px;
+  width:48px;
+  height:48px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:#17251e;
+  color:#efe6d1;
+  font-family:Georgia,"Times New Roman",serif;
+  font-weight:700;
+  letter-spacing:.04em;
+}
+.profile-card h3{
+  margin:1px 0 7px;
+  font-size:20px;
+}
+.profile-card p{
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+.quiet-card{
+  padding:8px 18px;
+}
+.quiet-row{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 0;
+  border-bottom:1px solid var(--line);
+  font-size:13px;
+}
+.quiet-row:last-child{border-bottom:0}
+.quiet-row span{color:var(--muted)}
+.quiet-row strong{
+  font-family:Georgia,"Times New Roman",serif;
+  font-weight:500;
+  color:var(--ink);
+}
+
+/* make the content feel lighter and more Notion/blog-like */
+.grid{
+  grid-template-columns:minmax(0,1fr) 260px;
+}
+.card{
+  box-shadow:0 8px 24px rgba(24,34,29,.035);
+}
+#latest-posts .empty{
+  border:0;
+  background:transparent;
+  padding:4px 0 18px;
+  color:#8a938e;
+}
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr}
+  .minimal-aside{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:640px){
+  .minimal-aside{grid-template-columns:1fr}
+  .profile-card{padding:18px}
+}
