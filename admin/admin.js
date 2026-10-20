@@ -32,7 +32,7 @@ function renderExisting(images=[]){
 }
 function resetEditor(){
   $("#editingId").value="";$("#title").value="";$("#body").value="";
-  $("#postDate").value=new Date().toISOString().slice(0,10);$("#category").value="DIARY";$("#visibility").value="public";
+  $("#postDate").value=new Date().toISOString().slice(0,10);$("#category").value="DIARY";if($("#visibility")) $("#visibility").value="public";
   files=[];removedImageIds=[];renderPreview();renderExisting([]);
   $("#modeKicker").textContent="New post";$("#editorHeading").textContent="새 글 작성";
   $("#publishBtn").textContent="게시하기";$("#deleteBtn").classList.add("hidden");$("#newBtn").classList.add("hidden");
@@ -64,7 +64,7 @@ async function editPost(id){
   try{
     const r=await fetch(base()+"/api/admin/posts/"+id,{headers:auth()});
     const p=await r.json();if(!r.ok)throw new Error(p.error||"글 불러오기 실패");
-    $("#editingId").value=p.id;$("#postDate").value=fmt(p.post_date);$("#category").value=p.category;$("#visibility").value=p.visibility||"public";
+    $("#editingId").value=p.id;$("#postDate").value=fmt(p.post_date);$("#category").value=p.category;if($("#visibility")) $("#visibility").value=p.visibility||"public";
     $("#title").value=p.title;$("#body").value=p.body||"";
     files=[];removedImageIds=[];renderPreview();renderExisting(p.images||[]);
     $("#modeKicker").textContent="Edit post";$("#editorHeading").textContent="글 수정";$("#publishBtn").textContent="수정 저장";
@@ -90,7 +90,7 @@ async function savePost(){
     fd.append("body",$("#body").value);
     fd.append("category",$("#category").value);
     fd.append("post_date",$("#postDate").value);
-    fd.append("visibility",$("#visibility").value);
+    fd.append("visibility", $("#visibility") ? $("#visibility").value : "public");
     removedImageIds.forEach(x=>fd.append("remove_image_ids",String(x)));
     files.forEach(f=>fd.append("photos",f));
     const r=await fetch(base()+(id?"/api/posts/"+id:"/api/posts"),{method:id?"PUT":"POST",headers:auth(),body:fd});

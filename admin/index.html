@@ -6,6 +6,13 @@
 <div id="adminArea" class="hidden">
 <section class="editor"><div class="admin-editor-head"><div><div class="kicker" id="modeKicker">New post</div><h2 id="editorHeading" style="margin:0">새 글 작성</h2></div><button id="newBtn" class="btn btn-soft hidden">새 글로 전환</button></div>
 <input id="editingId" type="hidden"><div class="row"><div class="field"><label>날짜</label><input id="postDate" type="date"></div><div class="field"><label>카테고리</label><select id="category"><option>DIARY</option><option>TRAVEL</option><option>CAR</option><option>STUDY</option></select></div></div>
+<div class="field">
+  <label>공개 설정</label>
+  <select id="visibility">
+    <option value="public">공개 — 누구나 볼 수 있음</option>
+    <option value="private">비공개 — PRIVATE에서 비밀번호 입력 후 열람</option>
+  </select>
+</div>
 <div class="field"><label>제목</label><input id="title" placeholder="오늘의 제목"></div><div class="field"><label>본문</label><textarea id="body" placeholder="오늘 있었던 일을 적어보세요."></textarea></div>
 <div id="existingWrap" class="field hidden"><label>기존 사진</label><div id="existingPreview" class="preview-grid"></div><div class="muted" style="font-size:12px;margin-top:6px">삭제할 사진은 × 버튼을 누르세요.</div></div>
 <div class="field"><label>새 사진 추가</label><div id="dropzone" class="dropzone">클릭하거나 사진을 끌어다 놓으세요<br><span class="muted">여러 장 선택 가능</span><input id="photos" type="file" accept="image/*" multiple hidden></div><div id="preview" class="preview-grid"></div></div>

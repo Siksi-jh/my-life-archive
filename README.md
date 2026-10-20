@@ -50,3 +50,9 @@ HOME / DIARY / TRAVEL / CAR / STUDY / PRIVATE / ADMIN
 - Privacy is a separate visibility setting, not a category.
 - PRIVATE asks for a password and then shows every private post regardless of category.
 - Homepage and category pages never expose private posts.
+
+
+## v6.1 hotfix
+- Fixed admin post publishing error: `Cannot read properties of null (reading 'value')`
+- Restored the Public / Private selector in the admin editor
+- Added a defensive fallback so cached older admin markup will not crash publishing
