@@ -5,6 +5,9 @@ compatibility_date = "2026-10-20"
 [vars]
 FRONTEND_ORIGIN = "https://my-life-archive-8mc.pages.dev"
 
+[triggers]
+crons = ["0 * * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "the-years-db"
