@@ -1,59 +1,86 @@
-
 function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function api(path){const b=(window.SITE_CONFIG.apiBase||"").replace(/\/$/,""); return b ? b+path : ""}
 
-function ageRangeForYear(year, birthYear){
-  return {beforeBirthday:year-birthYear-1, afterBirthday:year-birthYear};
-}
+const MONTH_NAMES=["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 
-function renderTimeline(){
-  const wrap=document.querySelector("#timeline"); if(!wrap) return;
-  const cfg=SITE_CONFIG;
-  const now=new Date();
-  const currentYear=Math.max(cfg.startYear,Math.min(now.getFullYear(),cfg.endYear));
-  const currentRange=ageRangeForYear(currentYear,cfg.birthYear);
+async function renderTimeline(){
+  const wrap=document.querySelector("#timeline");
+  const switcher=document.querySelector("#year-switcher");
+  if(!wrap) return;
 
-  const groups={};
-  for(let y=cfg.startYear;y<=cfg.endYear;y++){
-    const ages=ageRangeForYear(y,cfg.birthYear);
-    const decade=Math.floor(ages.afterBirthday/10)*10;
-    (groups[decade]??=[]).push({y,...ages});
+  if(!SITE_CONFIG.apiBase){
+    wrap.innerHTML='<div class="monthly-empty">API 연결 후 월별 기록이 여기에 표시됩니다.</div>';
+    return;
   }
 
-  const decadeKeys=Object.keys(groups).map(Number).sort((a,b)=>a-b);
-  const activeDecade=Math.floor(currentRange.afterBirthday/10)*10;
+  try{
+    const r=await fetch(api("/api/posts?limit=200"));
+    const data=await r.json();
+    const posts=Array.isArray(data.posts)?data.posts:[];
 
-  wrap.innerHTML=`
-    <div class="current-year">
-      <div>
-        <strong>${currentYear}</strong> <span class="age">· 만 ${currentRange.beforeBirthday}–${currentRange.afterBirthday}세</span>
-        <div class="desc">만 나이 기준으로 표시됩니다.</div>
-      </div>
-      <a class="cta" href="diary.html?year=${currentYear}">기록 보기</a>
-    </div>
+    if(!posts.length){
+      wrap.innerHTML='<div class="monthly-empty">아직 월별로 정리할 기록이 없습니다.</div>';
+      if(switcher) switcher.innerHTML="";
+      return;
+    }
 
-    <div class="decade-tabs">
-      ${decadeKeys.map(d=>`<button class="${d===activeDecade?'active':''}" data-d="${d}">만 ${d}대</button>`).join("")}
-    </div>
+    const years=[...new Set(posts.map(p=>String(p.post_date||"").slice(0,4)).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+    const currentYear=String(new Date().getFullYear());
+    let activeYear=years.includes(currentYear)?currentYear:years[0];
 
-    ${decadeKeys.map(d=>`
-      <div class="decade-panel ${d===activeDecade?'active':''}" data-panel="${d}">
-        <div class="years">
-          ${groups[d].map(o=>`
-            <a class="year ${o.y===currentYear?'current':''} ${o.y>now.getFullYear()?'future':''}" href="diary.html?year=${o.y}">
-              <strong>${o.y}</strong>
-              <span>만 ${o.beforeBirthday}–${o.afterBirthday}세</span>
-            </a>`).join("")}
-        </div>
-      </div>`).join("")}`;
+    function drawYear(year){
+      activeYear=year;
+      if(switcher){
+        switcher.querySelectorAll("button").forEach(btn=>btn.classList.toggle("active",btn.dataset.year===year));
+      }
 
-  wrap.querySelectorAll(".decade-tabs button").forEach(btn=>btn.onclick=()=>{
-    wrap.querySelectorAll(".decade-tabs button").forEach(x=>x.classList.remove("active"));
-    wrap.querySelectorAll(".decade-panel").forEach(x=>x.classList.remove("active"));
-    btn.classList.add("active");
-    wrap.querySelector(`[data-panel="${btn.dataset.d}"]`).classList.add("active");
-  });
+      const yearPosts=posts.filter(p=>String(p.post_date||"").startsWith(year+"-"));
+      const groups={};
+      yearPosts.forEach(p=>{
+        const month=String(p.post_date||"").slice(5,7);
+        if(!month) return;
+        (groups[month]??=[]).push(p);
+      });
+
+      const months=Object.keys(groups).sort((a,b)=>Number(b)-Number(a));
+      if(!months.length){
+        wrap.innerHTML='<div class="monthly-empty">이 해에는 아직 기록이 없습니다.</div>';
+        return;
+      }
+
+      wrap.innerHTML=months.map(month=>{
+        const entries=groups[month].sort((a,b)=>String(b.post_date).localeCompare(String(a.post_date)));
+        const monthName=MONTH_NAMES[Math.max(0,Math.min(11,Number(month)-1))];
+        return `
+          <section class="month-group">
+            <div class="month-label">
+              <span class="month-name">${monthName}</span>
+              <span class="month-count">${year} · ${entries.length} ${entries.length===1?'ENTRY':'ENTRIES'}</span>
+            </div>
+            <div class="month-posts">
+              ${entries.map(p=>`
+                <a class="month-entry" href="post.html?id=${encodeURIComponent(p.id)}">
+                  ${p.cover_url?`<img class="month-entry-thumb" src="${esc(p.cover_url)}" alt="">`:`<div class="month-entry-thumb"></div>`}
+                  <div class="month-entry-copy">
+                    <div class="month-entry-meta">${esc(p.category)} · ${esc(p.post_date)}</div>
+                    <h3 class="month-entry-title">${esc(p.title)}</h3>
+                  </div>
+                </a>`).join("")}
+            </div>
+          </section>`;
+      }).join("");
+    }
+
+    if(switcher){
+      switcher.innerHTML=years.map(y=>`<button type="button" data-year="${y}" class="${y===activeYear?'active':''}">${y}</button>`).join("");
+      switcher.querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>drawYear(btn.dataset.year)));
+    }
+    drawYear(activeYear);
+  }catch(e){
+    wrap.innerHTML='<div class="monthly-empty">월별 기록을 불러오지 못했습니다.</div>';
+  }
 }
+
 async function loadLatest(){
   const el=document.querySelector("#latest-posts"); if(!el) return;
   if(!SITE_CONFIG.apiBase){
@@ -74,4 +101,5 @@ async function loadLatest(){
       </a>`).join("");
   }catch(e){el.innerHTML='<div class="empty">글 목록을 불러오지 못했습니다. API 설정을 확인하세요.</div>'}
 }
+
 document.addEventListener("DOMContentLoaded",()=>{renderTimeline();loadLatest()});
