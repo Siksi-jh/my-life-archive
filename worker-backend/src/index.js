@@ -29,9 +29,24 @@ async function getPostWithImages(id,env,origin,{includeDeleted=false}={}){
   p.images=results.map(x=>({id:x.id,url:`${origin}/media/${encodeURIComponent(x.object_key)}`}));
   return p;
 }
-async function saveUploads(form,postId,env,startSort=0){
-  const photos=form.getAll("photos").filter(x=>x&&typeof x==="object"&&x.size>0).slice(0,20);let n=startSort;
-  for(const f of photos){if(f.size>15*1024*1024)continue;const key=`posts/${postId}/${Date.now()}-${crypto.randomUUID()}.${extFromType(f.type)}`;await env.MEDIA.put(key,await f.arrayBuffer(),{httpMetadata:{contentType:f.type||"application/octet-stream"}});await env.DB.prepare("INSERT INTO images(post_id,object_key,sort_order) VALUES(?,?,?)").bind(postId,key,n++).run()}
+function getUploadFiles(form){
+  const photos=form.getAll("photos").filter(x=>x&&typeof x==="object"&&x.size>0);
+  if(photos.length>20)throw new Error("사진은 한 번에 최대 20장까지 업로드할 수 있습니다.");
+  for(const file of photos){
+    if(file.size>15*1024*1024)throw new Error("15MB를 초과하는 사진이 있습니다: "+file.name);
+    if(!file.type.startsWith("image/"))throw new Error("이미지 파일만 업로드할 수 있습니다: "+file.name);
+  }
+  return photos;
+}
+async function saveUploads(photos,postId,env,startSort=0){
+  let n=startSort, uploaded=0;
+  for(const f of photos){
+    const key=`posts/${postId}/${Date.now()}-${crypto.randomUUID()}.${extFromType(f.type)}`;
+    await env.MEDIA.put(key,await f.arrayBuffer(),{httpMetadata:{contentType:f.type||"application/octet-stream"}});
+    await env.DB.prepare("INSERT INTO images(post_id,object_key,sort_order) VALUES(?,?,?)").bind(postId,key,n++).run();
+    uploaded++;
+  }
+  return uploaded;
 }
 async function deleteImageIds(ids,postId,env){for(const raw of ids){const id=Number(raw);if(!id)continue;const row=await env.DB.prepare("SELECT object_key FROM images WHERE id=? AND post_id=?").bind(id,postId).first();if(row){await env.MEDIA.delete(row.object_key);await env.DB.prepare("DELETE FROM images WHERE id=? AND post_id=?").bind(id,postId).run()}}}
 async function deletePostAll(id,env){
@@ -126,17 +141,19 @@ async function handleFetch(request,env){
     if(!(await requireAuth(request,env)))return json({error:"로그인이 필요합니다."},401,C);
     const f=await request.formData(),title=String(f.get("title")||"").trim(),body=String(f.get("body")||""),category=String(f.get("category")||"DIARY"),post_date=String(f.get("post_date")||""),visibility=String(f.get("visibility")||"public");
     if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(post_date))return json({error:"제목과 날짜를 확인하세요."},400,C);
+    let photos;try{photos=getUploadFiles(f)}catch(e){return json({error:e.message},400,C)}
     const res=await env.DB.prepare("INSERT INTO posts(title,body,category,post_date,visibility,deleted_at) VALUES(?,?,?,?,?,NULL)").bind(title,body,category,post_date,visibility==="private"?"private":"public").run();
-    const id=res.meta.last_row_id;await saveUploads(f,id,env,0);return json({ok:true,id},201,C)
+    const id=res.meta.last_row_id;const uploaded_count=await saveUploads(photos,id,env,0);return json({ok:true,id,uploaded_count},201,C)
   }
 
   if(m&&request.method==="PUT"){
     if(!(await requireAuth(request,env)))return json({error:"로그인이 필요합니다."},401,C);
     const id=Number(m[1]),f=await request.formData(),title=String(f.get("title")||"").trim(),body=String(f.get("body")||""),category=String(f.get("category")||"DIARY"),post_date=String(f.get("post_date")||""),visibility=String(f.get("visibility")||"public");
+    let photos;try{photos=getUploadFiles(f)}catch(e){return json({error:e.message},400,C)}
     const existing=await env.DB.prepare("SELECT id FROM posts WHERE id=? AND deleted_at IS NULL").bind(id).first();
     if(!existing)return json({error:"수정할 글을 찾지 못했습니다."},404,C);
     await env.DB.prepare("UPDATE posts SET title=?,body=?,category=?,post_date=?,visibility=? WHERE id=? AND deleted_at IS NULL").bind(title,body,category,post_date,visibility==="private"?"private":"public",id).run();
-    await deleteImageIds(f.getAll("remove_image_ids"),id,env);const c=await env.DB.prepare("SELECT COALESCE(MAX(sort_order),-1) m FROM images WHERE post_id=?").bind(id).first();await saveUploads(f,id,env,Number(c?.m??-1)+1);return json({ok:true,id},200,C)
+    await deleteImageIds(f.getAll("remove_image_ids"),id,env);const c=await env.DB.prepare("SELECT COALESCE(MAX(sort_order),-1) m FROM images WHERE post_id=?").bind(id).first();const uploaded_count=await saveUploads(photos,id,env,Number(c?.m??-1)+1);return json({ok:true,id,uploaded_count},200,C)
   }
 
   if(m&&request.method==="DELETE"){
